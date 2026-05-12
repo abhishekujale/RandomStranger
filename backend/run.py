@@ -1,11 +1,11 @@
-from fastapi import FastAPI
+# run.py
+import uvicorn
+from app.main import socket_app
 
-# 1. Create a FastAPI "instance"
-app = FastAPI()
-
-# 2. Define a path operation decorator (the route)
-@app.get("/")
-# 3. Define the path operation function
-def read_root():
-    # 4. Return the content (FastAPI converts this to JSON automatically)
-    return {"message": "Hello World"}
+if __name__ == "__main__":
+    uvicorn.run(
+        "app.main:socket_app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True  # Auto-restarts when you change code
+    )
