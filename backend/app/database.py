@@ -6,7 +6,7 @@ import os
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URI")
 
 # The "engine" is the actual connection to your DB
 engine = create_async_engine(DATABASE_URL, echo=True)

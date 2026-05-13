@@ -60,6 +60,6 @@ class Report(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=gen_id)
     chat_id: Mapped[str] = mapped_column(ForeignKey("chats.id"))
-    reporter_id: Mapped[String]
+    reporter_id: Mapped[str]
     reason: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

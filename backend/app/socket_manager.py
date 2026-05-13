@@ -1,6 +1,11 @@
 # app/socket_manager.py
 import socketio
 from app.matching import add_to_queue, remove_from_queue, find_match, generate_room_id
+from app.database import AsyncSessionLocal
+from app.models import Chat, Message
+from sqlalchemy import select
+import uuid
+
 
 # Create the Socket.io server
 # cors_allowed_origins should be your Next.js URL in production
@@ -47,19 +52,6 @@ async def join_queue(sid, data):
         await sio.emit("waiting", {"message": "Looking for someone..."}, to=sid)
 
 @sio.event
-async def send_message(sid, data):
-    """
-    User sends a chat message.
-    data = { "roomId": "...", "content": "Hello!" }
-    """
-    room_id = data.get("roomId")
-    content = data.get("content", "")
-    await sio.emit("receive-message", {
-        "senderId": sid,
-        "content": content,
-    }, room=room_id, skip_sid=sid)
-
-@sio.event
 async def typing(sid, data):
     """Broadcast typing indicator to partner."""
     room_id = data.get("roomId")
@@ -88,3 +80,33 @@ async def webrtc_answer(sid, data):
 async def ice_candidate(sid, data):
     room_id = data.get("roomId")
     await sio.emit("ice-candidate", data, room=room_id, skip_sid=sid)
+
+
+@sio.event
+async def send_message(sid, data):
+    """
+    1. Emit to partner in real time (fast)
+    2. Save to database (for history)
+    """
+    room_id = data.get("roomId")
+    content = data.get("content", "")
+
+    # Step 1 — real-time delivery (instant)
+    await sio.emit("receive-message", {
+        "senderId": sid,
+        "content": content,
+    }, room=room_id, skip_sid=sid)
+
+    # Step 2 — persist to DB (slightly slower, but that's OK)
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Chat).where(Chat.room_id == room_id))
+        chat = result.scalar_one_or_none()
+        if chat:
+            message = Message(
+                id=str(uuid.uuid4()),
+                chat_id=chat.id,
+                sender_id=sid,
+                content=content,
+            )
+            db.add(message)
+            await db.commit()
